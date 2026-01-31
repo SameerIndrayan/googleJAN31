@@ -34,27 +34,40 @@ export async function POST(request: NextRequest) {
     const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
 
     // Analyze the video and generate overlays
-    const prompt = `You are analyzing a football play video to create accessible text overlays for beginners and deaf viewers.
+    const prompt = `You are analyzing a football play video to create decision-focused text overlays for sideline coaching.
 
-Analyze this video and generate synchronized text overlays that explain what's happening at key moments. Focus on:
+Analyze this video and generate synchronized text overlays that focus on DECISIONS, CONSTRAINTS, and CHOICES at key moments. Focus on:
 - Pre-snap: Offense expectations, defensive look, primary responsibilities
 - Mid-play: Coverage shifts, pressure sources, window changes
 - Post-play: Outcome summary, main reason
 
+CRITICAL RULES for EVERY overlay line:
+- Maximum 9 words per line
+- Present tense only
+- NO "he", "she", or player numbers
+- NO "replay" or "notice"
+- Use role terms: QB, corner, safety, back, receiver
+- Emphasize constraint and choice
+
+Each overlay must have TWO versions:
+1. textBeginner: Plain language, NO scheme words (man, zone, blitz, leverage)
+2. textCoach: Can use simple scheme terms (man, zone, blitz, leverage), still max 9 words
+
 Provide your response as a JSON array of overlay objects. Each overlay should have:
 - timestamp: number (in seconds, when this overlay should appear)
 - phase: "pre-snap" | "mid-play" | "post-play"
-- text: string (short, clear sentence explaining what matters - one idea per line, no jargon)
+- textBeginner: string (max 9 words, present tense, no scheme terms)
+- textCoach: string (max 9 words, present tense, can use scheme terms)
 
-Generate 6-10 overlays spread across the video duration (${duration} seconds). Make them evenly distributed and focus on the most important moments.
+Generate 6-10 overlays spread across the video duration (${duration} seconds). Make them evenly distributed and focus on the most important decision moments.
 
 Return ONLY valid JSON array, no markdown formatting. Example format:
 [
-  {"timestamp": 0, "phase": "pre-snap", "text": "Offense lines up in spread formation."},
-  {"timestamp": 2, "phase": "pre-snap", "text": "Defense shows zone coverage look."},
-  {"timestamp": 5, "phase": "mid-play", "text": "Quarterback drops back to pass."},
-  {"timestamp": 8, "phase": "mid-play", "text": "Defensive pressure forces quick throw."},
-  {"timestamp": 12, "phase": "post-play", "text": "Pass incomplete due to pressure."}
+  {"timestamp": 0, "phase": "pre-snap", "textBeginner": "Deep routes covered. QB holds the ball.", "textCoach": "Deep routes covered. QB holds the ball."},
+  {"timestamp": 2, "phase": "pre-snap", "textBeginner": "Defense shows many players near line.", "textCoach": "Defense shows blitz look. QB adjusts."},
+  {"timestamp": 5, "phase": "mid-play", "textBeginner": "Checkdown to back. Defense rallies fast.", "textCoach": "Checkdown to back. Zone collapses fast."},
+  {"timestamp": 8, "phase": "mid-play", "textBeginner": "Corner closes. Tackle at catch point.", "textCoach": "Corner closes. Tackle at catch point."},
+  {"timestamp": 12, "phase": "post-play", "textBeginner": "Defense forces short gain.", "textCoach": "Defense forces short gain."}
 ]`;
 
     const result = await model.generateContent([

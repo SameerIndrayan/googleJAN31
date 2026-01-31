@@ -6,7 +6,8 @@ import { Play, Pause, Volume2, Eye, EyeOff, Sparkles, Loader2 } from "lucide-rea
 interface OverlayText {
   timestamp: number; // in seconds
   phase: "pre-snap" | "mid-play" | "post-play";
-  text: string;
+  textBeginner: string;
+  textCoach: string;
 }
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
   const [overlayData, setOverlayData] = useState<OverlayText[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
+  const [perspective, setPerspective] = useState<"beginner" | "coach">("beginner");
 
   useEffect(() => {
     const video = videoRef.current;
@@ -148,6 +150,10 @@ export default function Home() {
     }
   };
 
+  const getOverlayText = (overlay: OverlayText) => {
+    return perspective === "beginner" ? overlay.textBeginner : overlay.textCoach;
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -156,29 +162,54 @@ export default function Home() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                Football Play Understanding Overlay
+                Sideline Decision Tool
           </h1>
               <p className="text-gray-400">
-                Accessible play-by-play explanations for beginners and deaf viewers
+                Real-time decision analysis for coaches and players
               </p>
             </div>
-            <button
-              onClick={analyzeVideo}
-              disabled={isAnalyzing}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-all flex items-center gap-2"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  Generate Overlays
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-4">
+              {/* Perspective Toggle */}
+              <div className="flex items-center gap-2 bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setPerspective("beginner")}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    perspective === "beginner"
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Beginner
+                </button>
+                <button
+                  onClick={() => setPerspective("coach")}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    perspective === "coach"
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  Coach
+                </button>
+              </div>
+              <button
+                onClick={analyzeVideo}
+                disabled={isAnalyzing}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-all flex items-center gap-2"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Generate Overlays
+                  </>
+                )}
+              </button>
+            </div>
           </div>
           {analysisError && (
             <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
@@ -216,13 +247,13 @@ export default function Home() {
                   <div
                     className={`${getPhaseColor(
                       currentOverlay.phase
-                    )} text-white px-6 py-4 rounded-lg shadow-2xl max-w-2xl mx-auto`}
+                    )} text-white px-3 py-2 rounded-lg shadow-2xl max-w-2xl mx-auto`}
                   >
-                    <div className="text-sm font-semibold mb-1 uppercase tracking-wide opacity-90">
+                    <div className="text-xs font-semibold uppercase tracking-wide opacity-90 mb-0.5">
                       {currentOverlay.phase.replace("-", " ")}
                     </div>
-                    <div className="text-2xl md:text-3xl font-bold leading-tight">
-                      {currentOverlay.text}
+                    <div className="text-lg md:text-xl font-bold leading-tight">
+                      {getOverlayText(currentOverlay)}
                     </div>
                   </div>
                 </div>
@@ -294,7 +325,7 @@ export default function Home() {
                         style={{
                           left: `${(overlay.timestamp / duration) * 100}%`,
                         }}
-                        title={`${overlay.phase}: ${overlay.text}`}
+                        title={`${overlay.phase}: ${getOverlayText(overlay)}`}
                       />
                     ))}
                   </div>
@@ -330,7 +361,7 @@ export default function Home() {
                           <div className="text-xs text-gray-400 mb-1">
                             {formatTime(overlay.timestamp)}
                           </div>
-                          <div>{overlay.text}</div>
+                          <div>{getOverlayText(overlay)}</div>
                         </div>
                       ))}
                   </div>
@@ -356,7 +387,7 @@ export default function Home() {
                           <div className="text-xs text-gray-400 mb-1">
                             {formatTime(overlay.timestamp)}
                           </div>
-                          <div>{overlay.text}</div>
+                          <div>{getOverlayText(overlay)}</div>
                         </div>
                       ))}
                   </div>
@@ -382,7 +413,7 @@ export default function Home() {
                           <div className="text-xs text-gray-400 mb-1">
                             {formatTime(overlay.timestamp)}
                           </div>
-                          <div>{overlay.text}</div>
+                          <div>{getOverlayText(overlay)}</div>
                         </div>
                       ))}
                   </div>
