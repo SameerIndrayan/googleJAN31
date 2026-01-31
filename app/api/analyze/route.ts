@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const base64 = buffer.toString("base64");
     const mimeType = file.type;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
 
     let prompt = "";
 

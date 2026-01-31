@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // This endpoint analyzes based on the URL description.
     // For best results, use file upload with actual game footage.
     
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
 
     let prompt = "";
 

@@ -1,26 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, Eye, EyeOff } from "lucide-react";
+import { Play, Pause, Volume2, Eye, EyeOff, Sparkles, Loader2 } from "lucide-react";
 
 interface OverlayText {
   timestamp: number; // in seconds
   phase: "pre-snap" | "mid-play" | "post-play";
   text: string;
 }
-
-// Hard-coded overlay data for the demo
-const overlayData: OverlayText[] = [
-  { timestamp: 0, phase: "pre-snap", text: "Offense expects man coverage." },
-  { timestamp: 1, phase: "pre-snap", text: "Slot receiver serves as first read." },
-  { timestamp: 2, phase: "pre-snap", text: "Defense shows blitz look." },
-  { timestamp: 5, phase: "mid-play", text: "Safety rotates down." },
-  { timestamp: 7, phase: "mid-play", text: "Inside window closes." },
-  { timestamp: 9, phase: "mid-play", text: "Pressure from left side." },
-  { timestamp: 12, phase: "post-play", text: "Pressure shortens decision time." },
-  { timestamp: 13, phase: "post-play", text: "No clean option remains." },
-  { timestamp: 14, phase: "post-play", text: "Play results in incomplete pass." },
-];
 
 export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -29,6 +16,9 @@ export default function Home() {
   const [duration, setDuration] = useState(0);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const [currentOverlay, setCurrentOverlay] = useState<OverlayText | null>(null);
+  const [overlayData, setOverlayData] = useState<OverlayText[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
 
   useEffect(() => {
     const video = videoRef.current;
@@ -61,7 +51,61 @@ export default function Home() {
       video.removeEventListener("timeupdate", updateTime);
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, []);
+  }, [overlayData]);
+
+  const analyzeVideo = async () => {
+    const video = videoRef.current;
+    if (!video) {
+      setAnalysisError("Video element not found");
+      return;
+    }
+
+    // Get duration from video element if state hasn't updated yet
+    const videoDuration = video.duration || duration;
+    if (!videoDuration || isNaN(videoDuration)) {
+      setAnalysisError("Please wait for video to load completely");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError("");
+
+    try {
+      // Fetch the video file
+      const response = await fetch("/football-clip.mp4");
+      if (!response.ok) {
+        throw new Error(`Video file not found. Make sure football-clip.mp4 is in the public folder. (Status: ${response.status})`);
+      }
+      const blob = await response.blob();
+      if (blob.size === 0) {
+        throw new Error("Video file is empty");
+      }
+      const file = new File([blob], "football-clip.mp4", { type: "video/mp4" });
+
+      // Send to API
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("duration", videoDuration.toString());
+
+      const apiResponse = await fetch("/api/analyze-video", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await apiResponse.json();
+
+      if (data.success && data.overlays) {
+        setOverlayData(data.overlays);
+        setAnalysisError("");
+      } else {
+        setAnalysisError(data.error || "Failed to generate overlays");
+      }
+    } catch (error: any) {
+      setAnalysisError(error.message || "Failed to analyze video");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -85,6 +129,7 @@ export default function Home() {
   };
 
   const formatTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -108,12 +153,47 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">
-            Football Play Understanding Overlay
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                Football Play Understanding Overlay
           </h1>
-          <p className="text-gray-400">
-            Accessible play-by-play explanations for beginners and deaf viewers
-          </p>
+              <p className="text-gray-400">
+                Accessible play-by-play explanations for beginners and deaf viewers
+              </p>
+            </div>
+            <button
+              onClick={analyzeVideo}
+              disabled={isAnalyzing}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-lg transition-all flex items-center gap-2"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Generate Overlays
+                </>
+              )}
+            </button>
+          </div>
+          {analysisError && (
+            <div className="p-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
+              {analysisError}
+            </div>
+          )}
+          {overlayData.length === 0 && !isAnalyzing && (
+            <div className="p-3 bg-blue-900/30 border border-blue-700 rounded-lg text-blue-200 text-sm">
+              {duration > 0 ? (
+                <>Video loaded ({formatTime(duration)}). Click "Generate Overlays" to analyze your video and create synchronized text overlays automatically.</>
+              ) : (
+                <>Waiting for video to load... Make sure football-clip.mp4 is in the public folder.</>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -222,15 +302,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Note about video file */}
-            <div className="mt-4 p-4 bg-yellow-900/30 border border-yellow-700 rounded-lg">
-              <p className="text-sm text-yellow-200">
-                <strong>Note:</strong> Place a football video file named{" "}
-                <code className="bg-black/50 px-2 py-1 rounded">football-clip.mp4</code> in
-                the <code className="bg-black/50 px-2 py-1 rounded">public</code> folder, or
-                update the video src in the code.
-              </p>
-            </div>
           </div>
 
           {/* Overlay Panel - Right Side */}
